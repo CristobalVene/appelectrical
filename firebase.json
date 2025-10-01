@@ -1,0 +1,29 @@
+{
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "electricalapp-2a278",
+          "appId": "1:882463732947:android:b8aad335d405e547fbd026",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "electricalapp-2a278",
+          "configurations": {
+            "android": "1:882463732947:android:b8aad335d405e547fbd026",
+            "ios": "1:882463732947:ios:0811704605f223a6fbd026",
+            "web": "1:882463732947:web:b1a71f5eacbfd42afbd026"
+          }
+        }
+      }
+    }
+  },
+  "firestore": {
+    "database": "(default)",
+    "location": "us-central",
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
+  }
+}

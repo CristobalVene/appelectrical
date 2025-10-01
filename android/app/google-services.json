@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "882463732947",
+    "project_id": "electricalapp-2a278",
+    "storage_bucket": "electricalapp-2a278.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:882463732947:android:b8aad335d405e547fbd026",
+        "android_client_info": {
+          "package_name": "com.example.myapp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDV8D7TuizEMBsSmmGLS0uTpaIRqyxZrkU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
