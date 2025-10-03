@@ -1,10 +1,8 @@
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/project.dart';
 import '../models/user.dart';
 import '../providers/project_provider.dart';
-import '../providers/user_provider.dart';
 
 class EditProjectScreen extends StatefulWidget {
   final Project project;
@@ -12,90 +10,111 @@ class EditProjectScreen extends StatefulWidget {
   const EditProjectScreen({super.key, required this.project});
 
   @override
-  _EditProjectScreenState createState() => _EditProjectScreenState();
+  State<EditProjectScreen> createState() => _EditProjectScreenState();
 }
 
 class _EditProjectScreenState extends State<EditProjectScreen> {
-  late TextEditingController _nameController;
+  final _formKey = GlobalKey<FormState>();
+  late String _name;
+  late String _description;
   late List<String> _assignedUserIds;
 
   @override
   void initState() {
     super.initState();
-    _nameController = TextEditingController(text: widget.project.name);
-    _assignedUserIds = List.from(widget.project.userIds);
+    _name = widget.project.name;
+    _description = widget.project.description;
+    _assignedUserIds = List<String>.from(widget.project.assignedUsers);
+  }
+
+  void _saveForm() {
+    if (_formKey.currentState!.validate()) {
+      _formKey.currentState!.save();
+      final updatedProject = Project(
+        id: widget.project.id,
+        name: _name,
+        description: _description,
+        createdAt: widget.project.createdAt,
+        assignedUsers: _assignedUserIds,
+      );
+      Provider.of<ProjectProvider>(context, listen: false).updateProject(
+          updatedProject.id, updatedProject.name, updatedProject.description);
+      Navigator.of(context).pop();
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final userProvider = context.watch<UserProvider>();
-
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Edit Project'),
+        title: const Text('Editar Proyecto'),
         actions: [
           IconButton(
             icon: const Icon(Icons.save),
-            onPressed: _saveProject,
+            onPressed: _saveForm,
           ),
         ],
       ),
       body: Padding(
-        padding: const EdgeInsets.all(16.0), 
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            TextField(
-              controller: _nameController,
-              decoration: const InputDecoration(labelText: 'Project Name'),
-            ),
-            const SizedBox(height: 20),
-            const Text('Assigned Users', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 10),
-            Expanded(
-              child: StreamBuilder<List<User>>(
-                stream: userProvider.getUsersStream(),
-                builder: (context, snapshot) {
-                  if (!snapshot.hasData) {
-                    return const Center(child: CircularProgressIndicator());
-                  }
-                  final allUsers = snapshot.data!;
-                  return ListView.builder(
-                    itemCount: allUsers.length,
-                    itemBuilder: (context, index) {
-                      final user = allUsers[index];
-                      return CheckboxListTile(
-                        title: Text(user.name), // Changed from user.email to user.name
-                        value: _assignedUserIds.contains(user.id),
-                        onChanged: (bool? value) {
-                          setState(() {
-                            if (value == true) {
-                              _assignedUserIds.add(user.id);
-                            } else {
-                              _assignedUserIds.remove(user.id);
-                            }
-                          });
-                        },
-                      );
-                    },
-                  );
-                },
+        padding: const EdgeInsets.all(16.0),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            children: <Widget>[
+              TextFormField(
+                initialValue: _name,
+                decoration: const InputDecoration(labelText: 'Nombre del Proyecto'),
+                validator: (value) =>
+                    value!.isEmpty ? 'Por favor, introduce un nombre' : null,
+                onSaved: (value) => _name = value!,
               ),
-            ),
-          ],
+              TextFormField(
+                initialValue: _description,
+                decoration: const InputDecoration(labelText: 'Descripción'),
+                onSaved: (value) => _description = value!,
+              ),
+              const SizedBox(height: 20),
+              const Text('Asignar Usuarios',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              Expanded(
+                child: Consumer<List<User>>(
+                  builder: (context, users, child) {
+                    if (users.isEmpty) {
+                      return const Center(
+                          child: Text('No se encontraron usuarios.'));
+                    }
+                    return ListView.builder(
+                      itemCount: users.length,
+                      itemBuilder: (context, index) {
+                        final user = users[index];
+                        return CheckboxListTile(
+                          secondary: CircleAvatar(
+                            child: Text(user.name.isNotEmpty
+                                ? user.name[0].toUpperCase()
+                                : '?'),
+                          ),
+                          title: Text(user.name),
+                          subtitle: Text(user.email),
+                          value: _assignedUserIds.contains(user.uid),
+                          onChanged: (bool? value) {
+                            setState(() {
+                              if (value == true) {
+                                _assignedUserIds.add(user.uid);
+                              } else {
+                                _assignedUserIds.remove(user.uid);
+                              }
+                            });
+                          },
+                        );
+                      },
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
-  }
-
-  void _saveProject() async {
-    final projectProvider = context.read<ProjectProvider>();
-    final updatedProject = Project(
-      id: widget.project.id,
-      name: _nameController.text,
-      userIds: _assignedUserIds,
-    );
-    await projectProvider.updateProject(updatedProject);
-    Navigator.pop(context);
   }
 }

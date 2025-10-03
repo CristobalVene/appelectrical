@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/project_provider.dart';
@@ -15,9 +14,7 @@ class ManageProjectsScreen extends StatelessWidget {
     final projectProvider = context.watch<ProjectProvider>();
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Manage Projects'),
-      ),
+      appBar: AppBar(title: const Text('Gestionar Proyectos')),
       body: StreamBuilder<List<Project>>(
         stream: projectProvider.getProjectsStream(),
         builder: (context, snapshot) {
@@ -49,7 +46,10 @@ class _ProjectExpansionTile extends StatelessWidget {
     final taskProvider = context.watch<TaskProvider>();
 
     return ExpansionTile(
-      title: Text(project.name, style: const TextStyle(fontWeight: FontWeight.bold)),
+      title: Text(
+        project.name,
+        style: const TextStyle(fontWeight: FontWeight.bold),
+      ),
       trailing: IconButton(
         icon: const Icon(Icons.edit),
         onPressed: () {
@@ -66,11 +66,13 @@ class _ProjectExpansionTile extends StatelessWidget {
           stream: taskProvider.getTasksForProject(project.id),
           builder: (context, snapshot) {
             if (!snapshot.hasData) {
-              return const ListTile(title: Text('Loading tasks...'));
+              return const ListTile(title: Text('Cargando Tareas...'));
             }
             final tasks = snapshot.data!;
             if (tasks.isEmpty) {
-              return const ListTile(title: Text('No tasks assigned to this project.'));
+              return const ListTile(
+                title: Text('No existen tareas asociadas a este proyecto.'),
+              );
             }
             return Column(
               children: tasks.map((task) {

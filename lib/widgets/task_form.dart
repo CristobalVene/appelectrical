@@ -1,6 +1,6 @@
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../models/task.dart';
 import '../providers/task_provider.dart';
 import '../providers/project_provider.dart';
 import '../models/project.dart';
@@ -18,6 +18,7 @@ class _TaskFormState extends State<TaskForm> {
   final _descriptionController = TextEditingController();
   String? _selectedProjectId;
   String? _selectedStage;
+  bool _isInit = true;
 
   @override
   void initState() {
@@ -28,39 +29,75 @@ class _TaskFormState extends State<TaskForm> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    if (_isInit) {
+      final editingTask = context.watch<TaskProvider>().editingTask;
+      if (editingTask != null) {
+        _selectedProjectId = editingTask.projectId;
+        _zoneController.text = editingTask.zone;
+        _descriptionController.text = editingTask.description;
+        _selectedStage = editingTask.stage;
+      }
+    }
+    _isInit = false;
+  }
+
+  Future<void> _submitForm() async {
+    if (_selectedProjectId == null ||
+        _selectedStage == null ||
+        _descriptionController.text.trim().isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+              content: Text(
+                  'Por favor, complete todos los campos obligatorios: proyecto, estado y descripción.')),
+        );
+      }
+      return;
+    }
+
     final taskProvider = context.read<TaskProvider>();
-    if (taskProvider.editingTask != null) {
-      final task = taskProvider.editingTask!;
-      _selectedProjectId = task.projectId;
-      _zoneController.text = task.zone;
-      _descriptionController.text = task.description;
-      _selectedStage = task.stage;
-    } else if (widget.projectId == null) {
-      _clearForm();
+    final editingTask = taskProvider.editingTask;
+
+    if (editingTask != null) {
+      // Update existing task
+      final updatedTask = Task(
+        id: editingTask.id,
+        projectId: _selectedProjectId!,
+        stage: _selectedStage!,
+        zone: _zoneController.text.trim(),
+        description: _descriptionController.text.trim(),
+        isCompleted: editingTask.isCompleted,
+        createdAt: editingTask.createdAt, // Keep original creation date
+        completedAt: editingTask.isCompleted ? (editingTask.completedAt ?? DateTime.now()) : null,
+      );
+      await taskProvider.updateTask(updatedTask);
+    } else {
+      // Add new task
+      final newTask = Task(
+        projectId: _selectedProjectId!,
+        stage: _selectedStage!,
+        zone: _zoneController.text.trim(),
+        description: _descriptionController.text.trim(),
+        createdAt: DateTime.now(),
+      );
+      await taskProvider.addTask(newTask);
+    }
+
+    if (mounted) {
+      Navigator.pop(context);
     }
   }
 
-  void _clearForm() {
-    _selectedProjectId = null;
-    _zoneController.clear();
-    _descriptionController.clear();
-    _selectedStage = null;
-  }
-
-  void _submitForm() {
-    if (_selectedProjectId == null || _selectedStage == null) return;
-
-    context.read<TaskProvider>().saveTask(
-          projectId: _selectedProjectId!,
-          stage: _selectedStage!,
-          zone: _zoneController.text,
-          description: _descriptionController.text,
-        );
-    setState(() {
-      _clearForm();
-      context.read<TaskProvider>().setEditingTask(null);
+  @override
+  void dispose() {
+    _zoneController.dispose();
+    _descriptionController.dispose();
+    // IMPORTANT: Clear editing task from the provider when the form is closed
+    // to prevent issues next time the form opens.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+       context.read<TaskProvider>().clearEditingTask();
     });
-    if (Navigator.canPop(context)) Navigator.pop(context);
+    super.dispose();
   }
 
   @override
@@ -70,48 +107,107 @@ class _TaskFormState extends State<TaskForm> {
 
     return Container(
       padding: const EdgeInsets.all(24.0),
-      color: Theme.of(context).cardColor,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Text(taskProvider.editingTask == null ? "Add New Task" : "Edit Task", style: Theme.of(context).textTheme.titleLarge),
-          const SizedBox(height: 16),
-          StreamBuilder<List<Project>>(
-            stream: projectProvider.getProjectsStream(),
-            builder: (context, snapshot) {
-              if (!snapshot.hasData) return const CircularProgressIndicator();
-              return DropdownButtonFormField<String>(
-                initialValue: _selectedProjectId,
-                items: snapshot.data!.map((project) {
-                  return DropdownMenuItem(value: project.id, child: Text(project.name));
-                }).toList(),
-                onChanged: widget.projectId != null ? null : (value) => setState(() => _selectedProjectId = value),
-                decoration: const InputDecoration(labelText: "Project"),
-              );
-            },
-          ),
-          const SizedBox(height: 12),
-          DropdownButtonFormField<String>(
-            initialValue: _selectedStage,
-            items: taskProvider.stages.map((stage) {
-              return DropdownMenuItem(value: stage, child: Text(stage));
-            }).toList(),
-            onChanged: (value) => setState(() => _selectedStage = value),
-            decoration: const InputDecoration(labelText: "Stage"),
-          ),
-          const SizedBox(height: 12),
-          TextField(controller: _zoneController, decoration: const InputDecoration(labelText: "Zone")),
-          const SizedBox(height: 12),
-          TextField(controller: _descriptionController, decoration: const InputDecoration(labelText: "Task Description")),
-          const SizedBox(height: 24),
-          ElevatedButton(
-            onPressed: _submitForm,
-            style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 16), backgroundColor: Theme.of(context).primaryColor, foregroundColor: Colors.white),
-            child: Text(taskProvider.editingTask == null ? "Add Task" : "Update Task"),
-          ),
-          if (taskProvider.editingTask != null) TextButton(onPressed: () => taskProvider.setEditingTask(null), child: const Text("Cancel Edit"))
-        ],
+      constraints: const BoxConstraints(maxWidth: 500),
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              taskProvider.editingTask == null
+                  ? "Agregar nueva Tarea"
+                  : "Editar Tarea",
+              style: Theme.of(context).textTheme.titleLarge,
+            ),
+            const SizedBox(height: 24),
+            StreamBuilder<List<Project>>(
+              stream: projectProvider.getProjectsStream(),
+              builder: (context, snapshot) {
+                if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+                return DropdownButtonFormField<String>(
+                  value: _selectedProjectId,
+                  items: snapshot.data!.map((project) {
+                    return DropdownMenuItem(
+                      value: project.id,
+                      child: Text(project.name),
+                    );
+                  }).toList(),
+                  onChanged: widget.projectId != null
+                      ? null // Disable if a project is pre-selected
+                      : (value) => setState(() => _selectedProjectId = value),
+                  decoration: InputDecoration(
+                    labelText: "Projecto",
+                    border: const OutlineInputBorder(),
+                    filled: true,
+                    fillColor: Theme.of(context).scaffoldBackgroundColor,
+                  ),
+                );
+              },
+            ),
+            const SizedBox(height: 16),
+            DropdownButtonFormField<String>(
+              value: _selectedStage,
+              items: taskProvider.stages.map((stage) {
+                return DropdownMenuItem(value: stage, child: Text(stage));
+              }).toList(),
+              onChanged: (value) => setState(() => _selectedStage = value),
+              decoration: InputDecoration(
+                labelText: "Estado",
+                border: const OutlineInputBorder(),
+                filled: true,
+                fillColor: Theme.of(context).scaffoldBackgroundColor,
+              ),
+            ),
+            const SizedBox(height: 16),
+            TextFormField(
+              controller: _zoneController,
+              decoration: InputDecoration(
+                labelText: "Zone",
+                border: const OutlineInputBorder(),
+                filled: true,
+                fillColor: Theme.of(context).scaffoldBackgroundColor,
+              ),
+            ),
+            const SizedBox(height: 16),
+            TextFormField(
+              controller: _descriptionController,
+              decoration: InputDecoration(
+                labelText: "Descripción",
+                border: const OutlineInputBorder(),
+                filled: true,
+                fillColor: Theme.of(context).scaffoldBackgroundColor,
+              ),
+              maxLines: 3,
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton(
+              onPressed: _submitForm,
+              style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                backgroundColor: Theme.of(context).primaryColor,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              child: Text(
+                taskProvider.editingTask == null
+                    ? "Agregar Tarea"
+                    : "Actualizar Tarea",
+              ),
+            ),
+            if (taskProvider.editingTask != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 8.0),
+                child: TextButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                  },
+                  child: const Text("Cancelar"),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }

@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
@@ -58,10 +57,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
               ),
             const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: _signIn,
-              child: const Text('Login'),
-            ),
+            ElevatedButton(onPressed: _signIn, child: const Text('Login')),
             TextButton(
               onPressed: () {
                 Navigator.push(
@@ -69,7 +65,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   MaterialPageRoute(builder: (context) => const SignupScreen()),
                 );
               },
-              child: const Text('Don\'t have an account? Sign Up'),
+              child: const Text('No tienes una cuenta? Sign Up'),
             ),
           ],
         ),

@@ -52,6 +52,7 @@ class DefaultFirebaseOptions {
     messagingSenderId: '882463732947',
     projectId: 'electricalapp-2a278',
     authDomain: 'electricalapp-2a278.firebaseapp.com',
+    databaseURL: 'https://electricalapp-2a278-default-rtdb.firebaseio.com',
     storageBucket: 'electricalapp-2a278.firebasestorage.app',
     measurementId: 'G-EKV7920VV8',
   );
@@ -61,6 +62,7 @@ class DefaultFirebaseOptions {
     appId: '1:882463732947:android:b8aad335d405e547fbd026',
     messagingSenderId: '882463732947',
     projectId: 'electricalapp-2a278',
+    databaseURL: 'https://electricalapp-2a278-default-rtdb.firebaseio.com',
     storageBucket: 'electricalapp-2a278.firebasestorage.app',
   );
 
@@ -69,6 +71,7 @@ class DefaultFirebaseOptions {
     appId: '1:882463732947:ios:0811704605f223a6fbd026',
     messagingSenderId: '882463732947',
     projectId: 'electricalapp-2a278',
+    databaseURL: 'https://electricalapp-2a278-default-rtdb.firebaseio.com',
     storageBucket: 'electricalapp-2a278.firebasestorage.app',
     iosBundleId: 'electricalapp',
   );

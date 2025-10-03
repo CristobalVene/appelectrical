@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/project_provider.dart';
@@ -13,75 +12,148 @@ class AddProjectDialog extends StatefulWidget {
 }
 
 class _AddProjectDialogState extends State<AddProjectDialog> {
-  final _projectNameController = TextEditingController();
+  final _nameController = TextEditingController();
+  final _descriptionController = TextEditingController();
   final List<String> _selectedUserIds = [];
 
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: const Text('Create Project'),
+      title: const Text('Crear Nuevo Proyecto'),
       content: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: _projectNameController,
-              decoration: const InputDecoration(labelText: 'Project Name'),
-            ),
-            const SizedBox(height: 20),
-            _buildUserSelectionList(),
-          ],
+        child: SizedBox(
+          width: double.maxFinite,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: _nameController,
+                decoration: const InputDecoration(
+                  labelText: 'Nombre del Proyecto',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: _descriptionController,
+                decoration: const InputDecoration(
+                  labelText: 'Descripción',
+                  border: OutlineInputBorder(),
+                ),
+                maxLines: 2,
+              ),
+              const SizedBox(height: 20),
+              _buildUserSelectionList(),
+            ],
+          ),
         ),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancelar'),
+        ),
         ElevatedButton(
           onPressed: _createProject,
-          child: const Text('Create'),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Theme.of(context).primaryColor,
+            foregroundColor: Colors.white,
+          ),
+          child: const Text('Crear'),
         ),
       ],
     );
   }
 
   Widget _buildUserSelectionList() {
-    final userProvider = context.watch<UserProvider>();
+    // We use context.read here because we are in a stateful widget's method
+    // and don't need to rebuild the dialog if the user list changes.
+    final userProvider = context.read<UserProvider>();
+
     return StreamBuilder<List<User>>(
       stream: userProvider.getUsersStream(),
       builder: (context, snapshot) {
-        if (!snapshot.hasData) {
-          return const CircularProgressIndicator();
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (!snapshot.hasData || snapshot.data!.isEmpty) {
+          return const Text("No hay usuarios disponibles para asignar.");
         }
 
         final users = snapshot.data!;
 
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('Add Users:', style: TextStyle(fontWeight: FontWeight.bold)),
-            ...users.map((user) {
-              return CheckboxListTile(
-                title: Text(user.email),
-                value: _selectedUserIds.contains(user.id),
-                onChanged: (isSelected) {
-                  setState(() {
-                    if (isSelected!) {
-                      _selectedUserIds.add(user.id);
-                    } else {
-                      _selectedUserIds.remove(user.id);
-                    }
-                  });
-                },
-              );
-            }),
-          ],
+        return Container(
+          decoration: BoxDecoration(
+            border: Border.all(color: Colors.grey.shade300),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Padding(
+                padding: EdgeInsets.all(12.0),
+                child: Text(
+                  'Asignar Usuarios (Opcional)',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+              ),
+              const Divider(height: 1),
+              ConstrainedBox(
+                constraints: const BoxConstraints(
+                  maxHeight: 200, // Limit the height of the list
+                ),
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: users.length,
+                  itemBuilder: (context, index) {
+                    final user = users[index];
+                    return CheckboxListTile(
+                      title: Text(user.email),
+                      value: _selectedUserIds.contains(user.uid),
+                      onChanged: (isSelected) {
+                        setState(() {
+                          if (isSelected ?? false) {
+                            _selectedUserIds.add(user.uid);
+                          } else {
+                            _selectedUserIds.remove(user.uid);
+                          }
+                        });
+                      },
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
         );
       },
     );
   }
 
   void _createProject() {
-    final projectName = _projectNameController.text;
-    context.read<ProjectProvider>().createProject(projectName, _selectedUserIds);
+    final projectName = _nameController.text.trim();
+    final projectDescription = _descriptionController.text.trim();
+
+    if (projectName.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('El nombre del proyecto es obligatorio.')),
+      );
+      return;
+    }
+
+    context.read<ProjectProvider>().addProject(
+          projectName,
+          projectDescription,
+          _selectedUserIds, // Pass the list of selected user IDs
+        );
+        
     Navigator.pop(context);
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _descriptionController.dispose();
+    super.dispose();
   }
 }

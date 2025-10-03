@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
@@ -68,10 +67,7 @@ class _SignupScreenState extends State<SignupScreen> {
                 ),
               ),
             const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: _signUp,
-              child: const Text('Sign Up'),
-            ),
+            ElevatedButton(onPressed: _signUp, child: const Text('Sign Up')),
           ],
         ),
       ),

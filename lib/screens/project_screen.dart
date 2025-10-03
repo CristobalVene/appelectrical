@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import '../models/project.dart';
 import '../widgets/task_list.dart';
@@ -12,9 +11,7 @@ class ProjectScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(project.name),
-      ),
+      appBar: AppBar(title: Text(project.name)),
       body: SingleChildScrollView(
         child: Padding(
           padding: const EdgeInsets.all(16.0),
@@ -25,7 +22,8 @@ class ProjectScreen extends StatelessWidget {
         onPressed: () {
           showDialog(
             context: context,
-            builder: (context) => Dialog(child: TaskForm(projectId: project.id)),
+            builder: (context) =>
+                Dialog(child: TaskForm(projectId: project.id)),
           );
         },
         child: const Icon(Icons.add),

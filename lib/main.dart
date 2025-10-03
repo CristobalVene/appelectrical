@@ -1,10 +1,11 @@
-
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
+import 'dart:developer' as developer;
 
+import 'models/user.dart';
 import 'widgets/app_drawer.dart';
 import 'widgets/task_list.dart';
 import 'widgets/task_form.dart';
@@ -21,7 +22,9 @@ class ThemeProvider with ChangeNotifier {
   ThemeMode get themeMode => _themeMode;
 
   void toggleTheme() {
-    _themeMode = _themeMode == ThemeMode.light ? ThemeMode.dark : ThemeMode.light;
+    _themeMode = _themeMode == ThemeMode.light
+        ? ThemeMode.dark
+        : ThemeMode.light;
     notifyListeners();
   }
 }
@@ -32,11 +35,25 @@ void main() async {
   runApp(
     MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (context) => ThemeProvider()),
-        ChangeNotifierProvider(create: (context) => TaskProvider()),
-        ChangeNotifierProvider(create: (context) => ProjectProvider()),
-        ChangeNotifierProvider(create: (context) => UserProvider()),
+        // Foundational services and state
         Provider(create: (context) => AuthService()),
+        ChangeNotifierProvider(create: (context) => ThemeProvider()),
+        
+        // Data providers that other providers or UI might depend on
+        ChangeNotifierProvider(create: (context) => UserProvider()),
+        ChangeNotifierProvider(create: (context) => ProjectProvider()),
+        ChangeNotifierProvider(create: (context) => TaskProvider()),
+
+        // StreamProvider that depends on UserProvider
+        // It reads the UserProvider instance created above
+        StreamProvider<List<User>>(
+          create: (context) => context.read<UserProvider>().getUsersStream(),
+          initialData: const [],
+          catchError: (_, error) {
+            developer.log("Error in User Stream: $error", name: 'myapp.user_stream');
+            return [];
+          },
+        ),
       ],
       child: const MyApp(),
     ),
@@ -50,35 +67,59 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     const Color primarySeedColor = Color(0xFFE53935);
     final appTextTheme = TextTheme(
-      displayLarge: GoogleFonts.oswald(fontSize: 57, fontWeight: FontWeight.bold, color: Colors.white),
-      titleLarge: GoogleFonts.roboto(fontSize: 22, fontWeight: FontWeight.w500, color: Colors.white),
-      bodyMedium: GoogleFonts.openSans(fontSize: 14, color: Colors.white),
-      labelLarge: GoogleFonts.roboto(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white),
+      displayLarge: GoogleFonts.oswald(
+        fontSize: 57,
+        fontWeight: FontWeight.bold,
+        color: Colors.white,
+      ),
+      titleLarge: GoogleFonts.roboto(
+        fontSize: 22,
+        fontWeight: FontWeight.w500,
+        color: Colors.white,
+      ),
+      bodyMedium: GoogleFonts.notoSans(fontSize: 14, color: Colors.white),
+      labelLarge: GoogleFonts.roboto(
+        fontSize: 14,
+        fontWeight: FontWeight.bold,
+        color: Colors.white,
+      ),
     );
 
     final darkTheme = ThemeData(
-        useMaterial3: true,
-        brightness: Brightness.dark,
-        primaryColor: primarySeedColor,
-        scaffoldBackgroundColor: const Color(0xFF121212),
-        cardColor: const Color(0xFF1F1F1F),
-        textTheme: appTextTheme.apply(bodyColor: Colors.white, displayColor: Colors.white),
-        appBarTheme: const AppBarTheme(
-            backgroundColor: Color(0xFF1F1F1F),
-            elevation: 0,
-            iconTheme: IconThemeData(color: Colors.white),
-            titleTextStyle: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
-        bottomNavigationBarTheme: const BottomNavigationBarThemeData(
-            backgroundColor: Color(0xFF1F1F1F),
-            selectedItemColor: Colors.red,
-            unselectedItemColor: Colors.grey,
-            showUnselectedLabels: true),
-        floatingActionButtonTheme: const FloatingActionButtonThemeData(
-            backgroundColor: primarySeedColor, foregroundColor: Colors.white),
-        inputDecorationTheme: InputDecorationTheme(
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-          labelStyle: const TextStyle(color: Colors.grey),
-        ));
+      useMaterial3: true,
+      brightness: Brightness.dark,
+      primaryColor: primarySeedColor,
+      scaffoldBackgroundColor: const Color(0xFF121212),
+      cardColor: const Color(0xFF1F1F1F),
+      textTheme: appTextTheme.apply(
+        bodyColor: Colors.white,
+        displayColor: Colors.white,
+      ),
+      appBarTheme: const AppBarTheme(
+        backgroundColor: Color(0xFF1F1F1F),
+        elevation: 0,
+        iconTheme: IconThemeData(color: Colors.white),
+        titleTextStyle: TextStyle(
+          color: Colors.white,
+          fontSize: 20,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+      bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+        backgroundColor: Color(0xFF1F1F1F),
+        selectedItemColor: Colors.red,
+        unselectedItemColor: Colors.grey,
+        showUnselectedLabels: true,
+      ),
+      floatingActionButtonTheme: const FloatingActionButtonThemeData(
+        backgroundColor: primarySeedColor,
+        foregroundColor: Colors.white,
+      ),
+      inputDecorationTheme: InputDecorationTheme(
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+        labelStyle: const TextStyle(color: Colors.grey),
+      ),
+    );
 
     return Consumer<ThemeProvider>(
       builder: (context, themeProvider, child) {
@@ -115,7 +156,10 @@ class _AdminTaskScreenState extends State<AdminTaskScreen> {
         title: const Text("Tareas"),
         actions: [
           IconButton(icon: const Icon(Icons.search), onPressed: () {}),
-          IconButton(icon: const Icon(Icons.notifications_none), onPressed: () {}),
+          IconButton(
+            icon: const Icon(Icons.notifications_none),
+            onPressed: () {},
+          ),
         ],
       ),
       drawer: const AppDrawer(),
@@ -129,16 +173,28 @@ class _AdminTaskScreenState extends State<AdminTaskScreen> {
         ),
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () => showDialog(context: context, builder: (context) => const Dialog(child: TaskForm())),
+        onPressed: () => showDialog(
+          context: context,
+          builder: (context) => const Dialog(child: TaskForm()),
+        ),
         child: const Icon(Icons.add),
       ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
         onTap: (index) => setState(() => _currentIndex = index),
         items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.inbox_outlined), label: 'Tareas'),
-          BottomNavigationBarItem(icon: Icon(Icons.grid_view_outlined), label: 'Próximo'),
-          BottomNavigationBarItem(icon: Icon(Icons.explore_outlined), label: 'Explorar'),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.inbox_outlined),
+            label: 'Tareas',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.grid_view_outlined),
+            label: 'Próximo',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.explore_outlined),
+            label: 'Explorar',
+          ),
         ],
       ),
     );

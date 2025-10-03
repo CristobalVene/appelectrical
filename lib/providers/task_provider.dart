@@ -1,70 +1,68 @@
-
 import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/task.dart';
 
 class TaskProvider with ChangeNotifier {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final String _collectionPath = 'tasks';
-  Task? _editingTask;
+  final CollectionReference _tasksCollection = FirebaseFirestore.instance.collection('tasks');
 
+  Task? _editingTask;
   Task? get editingTask => _editingTask;
 
   final List<String> stages = [
-    "Before concrete", "After concrete", "Before plaster", "After plaster",
-    "First layer partitions", "Second layer partitions", "Wiring", "Devices",
-    "Main supply", "Panels", "Functionality",
+    'Backlog',
+    'To Do',
+    'In Progress',
+    'Done',
   ];
 
-  Stream<List<Task>> getTasksStream() {
-    return _firestore.collection(_collectionPath).snapshots().map((snapshot) {
-      return snapshot.docs.map((doc) => Task.fromFirestore(doc)).toList();
-    });
-  }
-
-  // New method to get tasks for a specific project
+  // Stream to get all tasks for a specific project from Firestore
   Stream<List<Task>> getTasksForProject(String projectId) {
-    return _firestore
-        .collection(_collectionPath)
+    return _tasksCollection
         .where('projectId', isEqualTo: projectId)
+        .orderBy('createdAt', descending: true)
         .snapshots()
         .map((snapshot) {
       return snapshot.docs.map((doc) => Task.fromFirestore(doc)).toList();
     });
   }
 
-  Future<void> saveTask({
-    required String projectId,
-    required String stage,
-    required String zone,
-    required String description,
-  }) async {
-    if (projectId.isEmpty || stage.isEmpty || zone.isEmpty || description.isEmpty) {
-      return;
-    }
-
-    final task = Task(
-      projectId: projectId,
-      stage: stage,
-      zone: zone,
-      description: description,
-    );
-
-    if (_editingTask == null) {
-      await _firestore.collection(_collectionPath).add(task.toMap());
-    } else {
-      await _firestore.collection(_collectionPath).doc(_editingTask!.id).update(task.toMap());
-      _editingTask = null;
-    }
-    notifyListeners();
+  // Stream to get all tasks (could be used for an "All Tasks" view)
+  Stream<List<Task>> getAllTasksStream() {
+    return _tasksCollection.orderBy('createdAt', descending: true).snapshots().map((snapshot) {
+      return snapshot.docs.map((doc) => Task.fromFirestore(doc)).toList();
+    });
   }
 
+  // Add a new task to Firestore
+  Future<void> addTask(Task task) async {
+    await _tasksCollection.add(task.toFirestore());
+  }
+
+  // Update an existing task in Firestore
+  Future<void> updateTask(Task task) async {
+    if (task.id.isEmpty) return; // Cannot update without an ID
+    await _tasksCollection.doc(task.id).update(task.toFirestore());
+  }
+
+  // Update the stage of a specific task
+  Future<void> updateTaskStage(String taskId, String newStage) async {
+    await _tasksCollection.doc(taskId).update({'stage': newStage});
+  }
+
+  // Delete a task from Firestore
+  Future<void> deleteTask(String taskId) async {
+    await _tasksCollection.doc(taskId).delete();
+  }
+
+  // Set the task to be edited
   void setEditingTask(Task? task) {
     _editingTask = task;
     notifyListeners();
   }
-
-  Future<void> deleteTask(String id) async {
-    await _firestore.collection(_collectionPath).doc(id).delete();
+  
+  // Clear the editing task state
+  void clearEditingTask() {
+    _editingTask = null;
+    notifyListeners();
   }
 }
